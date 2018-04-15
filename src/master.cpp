@@ -3,7 +3,9 @@
 
 #include <iostream>
 
-Master :: Master(){
+Master :: Master(const std::string &ip,unsigned short port)
+   :worker(ip,port)
+{
 	num_of_child = 4;
 	m_base = nullptr;
 	m_exit_event = nullptr;
@@ -23,6 +25,10 @@ bool Master :: StartMaster(){
 	std::cout << "Master Start" << std::endl;
 	worker.master = this;
 
+    if(!worker.listener.InitListener(&worker)){
+    	return false;
+    }
+    
 	while(num_of_child){
 		switch(fork()){
 			case -1:

@@ -15,7 +15,7 @@
 class Master{
 public:
 
-	Master();
+	Master(const std::string &ip,unsigned short port);
 	~Master();
 
 	bool StartMaster();

@@ -7,11 +7,17 @@
 #include "event2/event.h"
 #include "event2/util.h"
 
+#include "listener.h"
+#include "connection.h"
+
+#include "util.h"
+
 class Master;
 
 class Worker{
 public:
-	Worker();
+	typedef std::map<evutil_socket_t,Connection*> ConnectionMap;
+	Worker(const std::string &ip,unsigned short port);
 	~Worker();
 
 	void Run();
@@ -23,6 +29,7 @@ public:
 	struct event_base *w_base;
 	struct event      *w_exit_event;
 
-
+    Listener           listener;
+    ConnectionMap      con_map;
 };
 #endif
