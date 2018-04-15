@@ -67,6 +67,8 @@ bool Connection::InitConnection(Worker *worker){
 		std::cout << "InitConnection():bad_alloc" << std::endl;
 	}
 
+	http_parser.InitParser(this);
+
 	WantRead();
 
 	return true;
@@ -94,6 +96,12 @@ void Connection::ConEventCallback(evutil_socket_t sockfd,short event,void* arg){
 			con->con_inbuf.clear();
 			con->con_inbuf.append(con->con_intmp.c_str(),ret);
 		}
+
+		//在这里测试http-parser的作用
+        con->http_parser.HttpParseRequest(con->con_inbuf);
+        std::cout << con->req_queue.front()->http_method << std::endl;
+        //////////////////////////////////////////////////////////////////////
+
 		con->con_outbuf = con->con_inbuf;
 		con->NotWantRead();
 		con->WantWrite();

@@ -9,6 +9,8 @@
 
 #include "util.h"
 
+#include "http.h"
+
 class Worker;
 
 class Connection{
@@ -18,6 +20,10 @@ public:
 
 	bool InitConnection(Worker *worker);
 
+public:
+
+	typedef std::queue<HttpRequest*> req_queue_t;
+
 	static void ConEventCallback(evutil_socket_t fd,short event,void *arg);
 
 	Worker           *con_worker;
@@ -25,13 +31,18 @@ public:
 	evutil_socket_t   con_sockfd;
 	struct event     *read_event;
 	struct event     *write_event;
-
+    req_queue_t       req_queue;
 	std::string       con_inbuf;
 	std::string       con_intmp;
 	std::string       con_outbuf;
 
-	static void FreeConnection(Connection *con);
+	HttpRequest      *http_request_parser;    //用于解析
+	HttpRequest      *http_request_process;   //用于处理请求
+	HttpResponse      http_response;
+	HttpParser        http_parser;
 
+	static void FreeConnection(Connection *con);
+ 
 private:
 	void WantRead();
 	void NotWantRead();
