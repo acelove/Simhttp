@@ -11,6 +11,25 @@
 
 #include "http.h"
 
+typedef enum{
+
+	CON_STATE_CONNECT,
+	CON_STATE_REQUEST_START,
+	CON_STATE_READ,
+	CON_STATE_REQUEST_END,
+	CON_STATE_HANDLE_REQUEST,
+	CON_STATE_RESPONSE_START,
+	CON_STATE_WRITE,
+	CON_STATE_RESPONSE_END,
+	CON_STATE_ERROR
+}connection_state_t;
+
+typedef enum{
+	REQ_ERROR,
+	REQ_IS_COMPLETE,
+	REQ_NOT_COMPLETE
+}request_state_t;
+
 class Worker;
 
 class Connection{
@@ -19,6 +38,7 @@ public:
 	~Connection();
 
 	bool InitConnection(Worker *worker);
+	void ResetCon();
 
 public:
 
@@ -29,8 +49,8 @@ public:
 	Worker           *con_worker;
 
 	evutil_socket_t   con_sockfd;
-	struct event     *read_event;
-	struct event     *write_event;
+	struct event     *con_read_event;
+	struct event     *con_write_event;
     req_queue_t       req_queue;
 	std::string       con_inbuf;
 	std::string       con_intmp;
@@ -48,6 +68,23 @@ private:
 	void NotWantRead();
 	void WantWrite();
 	void NotWantWrite();
+	void SetWriteEvent();
+	void UnsetWriteEvent();
+	void ResetConnection();
+	void PrepareResponse();
+	void SetErrorResponse();
+	bool StateMachine();
+	void SetState(connection_state_t state);
+	request_state_t GetParsedRequest();
+
+private:
+	bool                   con_want_write;
+	bool                   con_want_read;
+	bool                   con_keep_alive;
+    int                    con_req_cnt;
+
+	connection_state_t     con_state;
+	request_state_t        req_state;
 
 };
 #endif

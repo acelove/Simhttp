@@ -16,4 +16,4 @@ src/http.o : src/http.cpp include/http.h lib/http-parser/http_parser.h include/c
 	g++ -g -o $@ -c $< --std=c++11 $(CFLAGS)
 .PHONY : clean
 clean :
-	rm simhttp $(object) 
+	-rm simhttp $(object) 
