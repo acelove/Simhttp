@@ -8,6 +8,12 @@ Connection::Connection(){
 
 	con_read_event = nullptr;
 	con_write_event = nullptr;
+
+	http_request_parser = nullptr;
+	http_request_process = nullptr;
+
+	plugin_data_slots = nullptr;
+	plugin_cnt = 0;
 }
 
 Connection::~Connection()
@@ -20,6 +26,7 @@ Connection::~Connection()
 	}
 }
 
+//静态函数
 void Connection::FreeConnection(Connection *con){
 
 	Worker *worker = con->con_worker;
@@ -52,6 +59,16 @@ bool Connection::InitConnection(Worker *worker){
 	}
 
 	http_parser.InitParser(this);
+
+    
+    //std::cout << "test1" << std::endl;
+	if (!InitPluginDataSlots())
+	{
+		std::cerr<< "Connection::InitConnection(): InitPluginDataSlots()" << std::endl;
+		return false;
+	}
+	//std::cout << "test2" << std::endl;
+	
 
 	SetState(CON_STATE_REQUEST_START);
 
@@ -114,6 +131,7 @@ void Connection::ConEventCallback(evutil_socket_t sockfd,short event,void* arg){
 bool Connection::StateMachine(){
 
 	request_state_t req_state;
+	plugin_state_t  plugin_state;
 
 	while(true){
 
@@ -155,17 +173,35 @@ bool Connection::StateMachine(){
 			        break;
 
 			case CON_STATE_HANDLE_REQUEST:
-			        PrepareResponse();
+			        //PrepareResponse();
 			        SetState(CON_STATE_RESPONSE_START);
 			        break;
 
 			case CON_STATE_RESPONSE_START:
+
+			        if (!PluginResponseStart())
+				    {
+					    std::cerr<< "Connection::StateMachine(): PluginResponseStart()" << std::endl;
+					    return false;
+				    }
 
 			        WantWrite();
 			        SetState(CON_STATE_WRITE);
 			        break;
 
 			case CON_STATE_WRITE:
+
+				    plugin_state = PluginWrite();
+                
+				    if (plugin_state == PLUGIN_ERROR)
+				    {
+					    SetState(CON_STATE_ERROR);
+					    continue;
+				    }
+				    else if (plugin_state == PLUGIN_NOT_READY) //插件没准备好，先处理其他con
+				    {                
+					    return true;
+				    }
 
 			        con_outbuf += http_response.GetResponse();
 			        SetState(CON_STATE_RESPONSE_END);
@@ -279,4 +315,81 @@ request_state_t Connection::GetParsedRequest(){
 	}
 
 	return REQ_NOT_COMPLETE;
+}
+
+bool Connection::InitPluginDataSlots(){
+
+	try{
+		plugin_data_slots = new void*[1];
+	}
+	catch(std::bad_alloc){
+		std::cerr << "Connection::InitPluginDataSlots():std::bad_alloc" << std::endl;
+	}
+
+	for(int i=0;i<1;i++){
+
+		plugin_data_slots[i] = NULL;
+	}
+
+	Plugin* *plugins = con_worker->w_plugins;
+
+	for(int i=0;i<1;i++){
+		if(!plugins[i]->Init(this,i)){
+
+			std::cerr << "Connection::InitPluginDataSlots():Plugin::Init()" << std::endl;
+			return false;
+		}
+	}
+
+	return true;
+}
+
+void Connection::FreePluginDataSlots(){
+
+	Plugin* *plugins = con_worker->w_plugins;
+
+	for(int i=0;i<1;i++){
+
+		if(plugin_data_slots[i]){
+
+			plugins[i]->Close(this,i);
+		}
+	}
+
+	if(plugin_data_slots){
+
+		delete[]plugin_data_slots;
+
+	}
+}
+
+bool Connection::PluginResponseStart(){
+
+	Plugin* *plugins = con_worker->w_plugins;
+
+	for(int i=0;i<1;i++){
+		if(!plugins[i]->ResponseStart(this,i)){
+			return false;
+		}
+	}
+
+	return true;
+}
+
+plugin_state_t Connection::PluginWrite(){
+
+	Plugin* *plugins = con_worker->w_plugins;
+
+	for(int i=0;i<1;i++){
+
+		plugin_state_t plugin_state = plugins[i]->Write(this,i);
+		if(plugin_state == PLUGIN_NOT_READY){
+			return PLUGIN_NOT_READY;
+		}
+		else if(plugin_state == PLUGIN_ERROR){
+			return PLUGIN_ERROR;
+		}
+	}
+
+	return PLUGIN_READY;
 }

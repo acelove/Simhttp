@@ -61,6 +61,7 @@ void Listener::ListenEventCallback(evutil_socket_t sockfd,short event,void* arg)
 		return;
 	}
 
+
 	Listener *listener = (Listener*)arg;
 	Connection *con = new Connection();
 

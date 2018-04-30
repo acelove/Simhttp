@@ -10,6 +10,7 @@
 #include "util.h"
 
 #include "http.h"
+#include "plugin.h"
 
 typedef enum{
 
@@ -22,6 +23,7 @@ typedef enum{
 	CON_STATE_WRITE,
 	CON_STATE_RESPONSE_END,
 	CON_STATE_ERROR
+	
 }connection_state_t;
 
 typedef enum{
@@ -62,6 +64,10 @@ public:
 	HttpParser        http_parser;
 
 	static void FreeConnection(Connection *con);
+
+	void*            *plugin_data_slots;
+	int               plugin_cnt;
+	int               plugin_next; 
  
 private:
 	void WantRead();
@@ -76,6 +82,17 @@ private:
 	bool StateMachine();
 	void SetState(connection_state_t state);
 	request_state_t GetParsedRequest();
+
+	//插件相关
+	bool InitPluginDataSlots();
+	void FreePluginDataSlots();
+
+	bool PluginRequestStart();
+	bool PluginRead();
+	bool PluginRequestEnd();
+	bool PluginResponseStart();
+	plugin_state_t PluginWrite();
+	bool PluginResponseEnd();
 
 private:
 	bool                   con_want_write;
